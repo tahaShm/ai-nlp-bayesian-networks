@@ -1,6 +1,7 @@
 import nltk
 import csv
 import pandas as pd
+import math
 from nltk.corpus import stopwords 
 from nltk.tokenize import word_tokenize 
 from nltk.tokenize import RegexpTokenizer
@@ -38,7 +39,8 @@ def lemmatizeWords(wordList) :
         wordList[i] = lemmatizer.lemmatize(wordList[i])
     return wordList
 
-def preprocessData(context) :    
+def preprocessData(context) : 
+    context = lowerAllCharacters(context)   
     wordList = removeStopWordsAndPunctuations(context)
     wordList = lemmatizeWords(wordList)
     return wordList
@@ -55,6 +57,20 @@ class Classifier :
         
         # print(len(self.styleTrainData))
         # print(len(self.styleEvaluateData))
+        self.pt = (len(self.travelTrainData) / (len(self.travelTrainData) + len(self.businessTrainData) + len(self.styleTrainData)))
+        self.pb = (len(self.businessTrainData) / (len(self.travelTrainData) + len(self.businessTrainData) + len(self.styleTrainData)))
+        self.ps = (len(self.styleTrainData) / (len(self.travelTrainData) + len(self.businessTrainData) + len(self.styleTrainData)))
+        print("data.csv reading done.")
+        # print(self.pt, self.pb, self.ps)
+        self.ptWords = self.calculatePWords(self.travelTrainData)
+        print("words' probability of travels done.")
+        self.pbWords = self.calculatePWords(self.businessTrainData)
+        print("words' probability of buisiness done.")
+        self.psWords = self.calculatePWords(self.styleTrainData)
+        print("words' probability of style & beauty done.")
+        
+        
+        
     
     def getDatas(self, dataFile) : 
         col_list = ["index", "category", "headline", "short_description"]
@@ -104,6 +120,41 @@ class Classifier :
                 styleEvaluateData.append(styleData[i])
                 
         return [travelTrainData, travelEvaluateData, businessTrainData, buisinessEvaluateData, styleTrainData, styleEvaluateData]
+    
+    def getProcessedWords(self, dataSet) :
+        words = []
+        #row[2] -> headlines
+        #row[3] -> short_description
+        i = 0
+        for row in dataSet :  
+            i += 1 
+            headWordList = []
+            descWordList = []
+            if (not (isinstance(row[3], float) and math.isnan(row[3]))) : 
+                headWordList = preprocessData(row[2])
+                descWordList = preprocessData(row[3])
+            
+            currentWords = headWordList + descWordList
+            words = words + currentWords
+                # print(words)
+                # print("___________________________________________________________")
+                # print(headWordList)
+                # print(descWordList)
+                
+                
+        return words
+
+    def calculatePWords(self, dataSet) : 
+        words = self.getProcessedWords(dataSet)
+        wordsSize = len(words)
+        counter = 0
+        wordDic = {}
+        for word in words :
+            if (word not in wordDic) :
+                wordDic[word] = 1/wordsSize
+            else: 
+                wordDic[word] += 1/wordsSize
+        return wordDic  
             
         
         
