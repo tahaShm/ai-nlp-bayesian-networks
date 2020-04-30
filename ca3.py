@@ -7,6 +7,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize 
 from nltk.tokenize import RegexpTokenizer
 from nltk.stem import WordNetLemmatizer
+from itertools import zip_longest
 
 dataFile = "data.csv"
 testFile = "test.csv"
@@ -48,7 +49,7 @@ def preprocessData(context) :
     
     
 class Classifier :
-    def __init__(self, dataFile, testFile) :
+    def __init__(self, dataFile) :
         [self.travelTrainData, self.travelEvaluateData, self.businessTrainData, self.businessEvaluateData, self.styleTrainData, self.styleEvaluateData] = self.getDatas(dataFile)
         # print(len(self.travelTrainData))
         # print(len(self.travelEvaluateData))
@@ -296,10 +297,45 @@ class Classifier :
         
         print("accuracy: {:.3f}".format((travelPredics[0] + businessPredicts[1] + stylePredict[2]) / (travelPredics[0] + travelPredics[1] + travelPredics[2] + businessPredicts[0] + businessPredicts[1] + businessPredicts[2] + stylePredict[0] + stylePredict[1] + stylePredict[2]) * 100))
         
+    def evaluateTestFile(self) :
+        col_list = ["index", "headline", "short_description"]
+        df = pd.read_csv(testFile, usecols=col_list)
+        indexes = []
+        results = []
+        for index, dfRow in df.iterrows() : 
+            headWordList = []
+            descWordList = []
+            if (not (isinstance(dfRow[1], float) and math.isnan(dfRow[1]))) : 
+                headWordList = preprocessData(dfRow[1])
+            
+            if (not (isinstance(dfRow[2], float) and math.isnan(dfRow[2]))) : 
+                descWordList = preprocessData(dfRow[2])
+            
+            currentWords = headWordList + descWordList
+            
+            travleTotalP = self.evaluateTravelP(currentWords)
+            businessTotalP = self.evaluateBusinessP(currentWords)
+            styleTotalP = self.evaluateStyleP(currentWords)
+            indexes.append(dfRow[0])
+            if (max(travleTotalP, businessTotalP, styleTotalP) == travleTotalP) :
+                results.append("TRAVEL")
+            elif (max(travleTotalP, businessTotalP, styleTotalP) == businessTotalP):
+                results.append("BUSINESS")
+            else: 
+                results.append("STYLE & BEAUTY")
+        d = [indexes, results]
+        export_data = zip_longest(*d, fillvalue = '')
+        with open('output.csv', 'w', encoding="ISO-8859-1", newline='') as myfile:
+            wr = csv.writer(myfile)
+            wr.writerow(("index", "category"))
+            wr.writerows(export_data)
+        myfile.close()
+        
             
         
         
-cl = Classifier(dataFile, testFile)  
+cl = Classifier(dataFile)  
 cl.classify2()  
 print("______________")
 cl.classify3()   
+cl.evaluateTestFile()
