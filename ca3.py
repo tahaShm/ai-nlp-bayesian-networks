@@ -2,6 +2,7 @@ import nltk
 import csv
 import pandas as pd
 import math
+import numpy as np
 from nltk.corpus import stopwords 
 from nltk.tokenize import word_tokenize 
 from nltk.tokenize import RegexpTokenizer
@@ -61,15 +62,12 @@ class Classifier :
         self.pb = (len(self.businessTrainData) / (len(self.travelTrainData) + len(self.businessTrainData) + len(self.styleTrainData)))
         self.ps = (len(self.styleTrainData) / (len(self.travelTrainData) + len(self.businessTrainData) + len(self.styleTrainData)))
         print("data.csv reading done.")
-        # print(self.pt, self.pb, self.ps)
         self.ptWords = self.calculatePWords(self.travelTrainData)
         print("words' probability of travels done.")
         self.pbWords = self.calculatePWords(self.businessTrainData)
         print("words' probability of buisiness done.")
         self.psWords = self.calculatePWords(self.styleTrainData)
         print("words' probability of style & beauty done.")
-        
-        
         
     
     def getDatas(self, dataFile) : 
@@ -90,10 +88,47 @@ class Classifier :
         businessSize = len(businessData)
         styleSize = len(styleData)
         
+        
+        maxSize = max(travelSize, businessSize, styleSize)
+        
+        if (travelSize < maxSize) : 
+            l1 = list(range(travelSize))
+            travelIndices = np.random.choice(l1, maxSize)
+            travelData2 = []
+            for i in range(maxSize) : 
+                travelData2.append(travelData[travelIndices[i]])
+            travelData = travelData2
+        
+        if (businessSize < maxSize) : 
+            l1 = list(range(businessSize))
+            businessIndices = np.random.choice(l1, maxSize)
+            businessData2 = []
+            for i in range(maxSize) : 
+                businessData2.append(businessData[businessIndices[i]])
+            businessData = businessData2
+                
+        if (styleSize < maxSize) : 
+            l1 = list(range(styleSize))
+            styleIndices = np.random.choice(l1, maxSize)
+            styleData2 = []
+            for i in range(maxSize) : 
+                styleData2.append(styleData[styleIndices[i]])
+            styleData = styleData2
+        
+        travelSize = len(travelData)
+        businessSize = len(businessData)
+        styleSize = len(styleData)
+            
         # print(len(travelData))
         # print(len(businessData))
-        # print(len(styleData))
+        # print(travelData[8800])
+        # print(businessData[8800])
+        # print(styleData[8800])
         
+        # print(len(styleData))
+            
+                
+        # print(businessData2)
         # print("**************************")
         
         travelTrainData = []
@@ -130,8 +165,9 @@ class Classifier :
             i += 1 
             headWordList = []
             descWordList = []
-            if (not (isinstance(row[3], float) and math.isnan(row[3]))) : 
+            if (not (isinstance(row[2], float) and math.isnan(row[2]))) : 
                 headWordList = preprocessData(row[2])
+            if (not (isinstance(row[3], float) and math.isnan(row[3]))) : 
                 descWordList = preprocessData(row[3])
             
             currentWords = headWordList + descWordList
@@ -147,15 +183,123 @@ class Classifier :
     def calculatePWords(self, dataSet) : 
         words = self.getProcessedWords(dataSet)
         wordsSize = len(words)
-        counter = 0
         wordDic = {}
         for word in words :
             if (word not in wordDic) :
                 wordDic[word] = 1/wordsSize
             else: 
                 wordDic[word] += 1/wordsSize
-        return wordDic  
+        for word in wordDic:
+            wordDic[word] = math.log(wordDic[word], 10)
+        return wordDic 
+    
+    def evaluateTravelP(self, wordList) :
+        pLog = 0
+        for word in wordList : 
+            if (word in self.ptWords) : 
+                pLog += self.ptWords[word]
+            else:
+                pLog += -6
+        return pLog
+    
+    def evaluateBusinessP(self, wordList) :
+        pLog = 0
+        for word in wordList : 
+            if (word in self.pbWords) : 
+                pLog += self.pbWords[word]
+            else:
+                pLog += -6
+        return pLog
+    
+    def evaluateStyleP(self, wordList) :
+        pLog = 0
+        for word in wordList : 
+            if (word in self.psWords) : 
+                pLog += self.psWords[word]
+            else:
+                pLog += -6
+        return pLog
+     
+    def classify2EvaluateDatas(self, data, dataType) :
+        i = 0
+        travelCount = 0
+        businessCount = 0
+        for row in data:
+            headWordList = []
+            descWordList = []
+            
+            if (type(row[2]) == list) :
+                headWordList = row[2]
+            elif (not (isinstance(row[2], float) and math.isnan(row[2]))) : 
+                headWordList = preprocessData(row[2])
+            
+            if (type(row[3]) == list) :
+                descWordList = row[3]
+            elif (not (isinstance(row[3], float) and math.isnan(row[3]))) : 
+                descWordList = preprocessData(row[3])
+            
+            currentWords = headWordList + descWordList
+            data[i][2] = currentWords
+            i += 1
+            travleTotalP = self.evaluateTravelP(currentWords)
+            businessTotalP = self.evaluateBusinessP(currentWords)
+            if (travleTotalP >= businessTotalP) :
+                travelCount += 1
+            else:
+                businessCount += 1
+        return [travelCount, businessCount]
+    
+    def classify3EvaluateDatas(self, data, dataType) :
+        travelCount = 0
+        businessCount = 0
+        styleCount = 0
+        for row in data:
+            
+            currentWords = row[2]
+            travleTotalP = self.evaluateTravelP(currentWords)
+            businessTotalP = self.evaluateBusinessP(currentWords)
+            styleTotalP = self.evaluateStyleP(currentWords)
+            if (max(travleTotalP, businessTotalP, styleTotalP) == travleTotalP) :
+                travelCount += 1
+            elif (max(travleTotalP, businessTotalP, styleTotalP) == businessTotalP):
+                businessCount += 1
+            else: 
+                styleCount += 1
+        return [travelCount, businessCount, styleCount]      
+            
+    
+    def classify2(self) :
+        travelPredics = self.classify2EvaluateDatas(self.travelEvaluateData, "travel") 
+        businessPredicts = self.classify2EvaluateDatas(self.businessEvaluateData, "business")
+        print("travel recall : {:.3f}".format(travelPredics[0] / (travelPredics[0] + travelPredics[1]) * 100))
+        print("travel precision : {:.3f}".format(travelPredics[0] / (travelPredics[0] + businessPredicts[0]) * 100))
+        
+        print("business recall : {:.3f}".format(businessPredicts[1] / (businessPredicts[0] + businessPredicts[1]) * 100))
+        print("business precision : {:.3f}".format(businessPredicts[1] / (travelPredics[1] + businessPredicts[1]) * 100))
+        
+        print("accuracy: {:.3f}".format((travelPredics[0] + businessPredicts[1]) / (travelPredics[0] + travelPredics[1] + businessPredicts[0] + businessPredicts[1]) * 100))
+        
+        
+    def classify3(self) :
+        travelPredics = self.classify3EvaluateDatas(self.travelEvaluateData, "travel") 
+        businessPredicts = self.classify3EvaluateDatas(self.businessEvaluateData, "business")
+        stylePredict = self.classify3EvaluateDatas(self.styleEvaluateData, "style")
+        
+        print("travel recall : {:.3f}".format(travelPredics[0] / (travelPredics[0] + travelPredics[1] + travelPredics[2]) * 100))
+        print("travel precision : {:.3f}".format(travelPredics[0] / (travelPredics[0] + businessPredicts[0] + stylePredict[0]) * 100))
+        
+        print("business recall : {:.3f}".format(businessPredicts[1] / (businessPredicts[0] + businessPredicts[1] + businessPredicts[2]) * 100))
+        print("business precision : {:.3f}".format(businessPredicts[1] / (travelPredics[1] + businessPredicts[1] + stylePredict[1]) * 100))
+        
+        print("style recall : {:.3f}".format(stylePredict[2] / (stylePredict[0] + stylePredict[1] + stylePredict[2]) * 100))
+        print("style precision : {:.3f}".format(stylePredict[2] / (travelPredics[2] + businessPredicts[2] + stylePredict[2]) * 100))
+        
+        print("accuracy: {:.3f}".format((travelPredics[0] + businessPredicts[1] + stylePredict[2]) / (travelPredics[0] + travelPredics[1] + travelPredics[2] + businessPredicts[0] + businessPredicts[1] + businessPredicts[2] + stylePredict[0] + stylePredict[1] + stylePredict[2]) * 100))
+        
             
         
         
-cl = Classifier(dataFile, testFile)       
+cl = Classifier(dataFile, testFile)  
+cl.classify2()  
+print("______________")
+cl.classify3()   
