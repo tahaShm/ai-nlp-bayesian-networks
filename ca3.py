@@ -51,14 +51,7 @@ def preprocessData(context) :
 class Classifier :
     def __init__(self, dataFile) :
         [self.travelTrainData, self.travelEvaluateData, self.businessTrainData, self.businessEvaluateData, self.styleTrainData, self.styleEvaluateData] = self.getDatas(dataFile)
-        # print(len(self.travelTrainData))
-        # print(len(self.travelEvaluateData))
         
-        # print(len(self.businessTrainData))
-        # print(len(self.businessEvaluateData))
-        
-        # print(len(self.styleTrainData))
-        # print(len(self.styleEvaluateData))
         self.pt = (len(self.travelTrainData) / (len(self.travelTrainData) + len(self.businessTrainData) + len(self.styleTrainData)))
         self.pb = (len(self.businessTrainData) / (len(self.travelTrainData) + len(self.businessTrainData) + len(self.styleTrainData)))
         self.ps = (len(self.styleTrainData) / (len(self.travelTrainData) + len(self.businessTrainData) + len(self.styleTrainData)))
@@ -119,18 +112,6 @@ class Classifier :
         travelSize = len(travelData)
         businessSize = len(businessData)
         styleSize = len(styleData)
-            
-        # print(len(travelData))
-        # print(len(businessData))
-        # print(travelData[8800])
-        # print(businessData[8800])
-        # print(styleData[8800])
-        
-        # print(len(styleData))
-            
-                
-        # print(businessData2)
-        # print("**************************")
         
         travelTrainData = []
         businessTrainData = []
@@ -173,12 +154,6 @@ class Classifier :
             
             currentWords = headWordList + descWordList
             words = words + currentWords
-                # print(words)
-                # print("___________________________________________________________")
-                # print(headWordList)
-                # print(descWordList)
-                
-                
         return words
 
     def calculatePWords(self, dataSet) : 
@@ -272,6 +247,8 @@ class Classifier :
     def classify2(self) :
         travelPredics = self.classify2EvaluateDatas(self.travelEvaluateData, "travel") 
         businessPredicts = self.classify2EvaluateDatas(self.businessEvaluateData, "business")
+        
+        
         print("travel recall : {:.3f}".format(travelPredics[0] / (travelPredics[0] + travelPredics[1]) * 100))
         print("travel precision : {:.3f}".format(travelPredics[0] / (travelPredics[0] + businessPredicts[0]) * 100))
         
